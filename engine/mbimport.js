@@ -13,7 +13,7 @@
 // (x, y, z) to Organon (x, z, −y), a proper rotation, so handedness and image
 // orientation are preserved.
 
-import { mat3Mul, mat3MulVec, transpose3, normalize, cross, dot, sub, add, mul, length } from './vec.js';
+import { fractalRotation, mat3Mul, mat3MulVec, transpose3, normalize, cross, dot, sub, add, mul, length } from './vec.js';
 import { PARAMS } from './params.js';
 import { F } from './formula.js';
 import { cameraBasis } from './camera.js';
@@ -78,11 +78,24 @@ export const mbRotation2 = d => mat3Mul(mat3Mul(Rz(d[2] * DEG), Ry(d[1] * DEG)),
 
 // Organon's fractalRotation(α, β, γ) = Rx(−α)·Ry(−β)·Rz(−γ). Solve for the angles
 // that give matrix M (XYZ decomposition).
+// At gimbal lock (|M[2]| = 1, β = ±90°) only α ± γ is defined: γ is set to 0
+// and α is solved from the remaining entries, and both signs are checked.
 export function fractalAnglesFor(M) {
-  const q = Math.asin(Math.max(-1, Math.min(1, M[2])));
-  const p = Math.atan2(-M[5], M[8]);
-  const r = Math.atan2(-M[1], M[0]);
-  return { alpha: -p, beta: -q, gamma: -r };
+  // atan2 instead of asin: asin loses half the digits near ±90°.
+  const q = Math.atan2(M[2], Math.hypot(M[0], M[1]));
+  if (Math.hypot(M[0], M[1]) > 1e-9) {
+    const p = Math.atan2(-M[5], M[8]);
+    const r = Math.atan2(-M[1], M[0]);
+    return { alpha: -p, beta: -q, gamma: -r };
+  }
+  let best = null;
+  for (const a of [Math.atan2(M[7], M[4]), -Math.atan2(M[7], M[4]), Math.atan2(M[3], M[4]), -Math.atan2(M[3], M[4])]) {
+    const c = { alpha: a, beta: -q, gamma: 0 };
+    const F = fractalRotation(c.alpha, c.beta, c.gamma);
+    const e = F.reduce((s, x, i) => s + Math.abs(x - M[i]), 0);
+    if (!best || e < best.e) best = { ...c, e };
+  }
+  return { alpha: best.alpha, beta: best.beta, gamma: 0 };
 }
 // Organon's eulerDeg(x, y, z) = Ry(y)·Rx(x)·Rz(z). Solve for the angles (degrees).
 export function eulerDegFor(M) {

@@ -26,7 +26,7 @@ import { MutationGrid } from './ui/mutation.js';
 import { initMobileTabs } from './ui/mobiletabs.js';
 import { proceduralTexture, imageTexture, TEX_KEYS } from './engine/textures.js';
 
-export const ENGINE_VERSION = '1.0.0';
+export const ENGINE_VERSION = '1.1.0';
 export const VERSION = F.version;
 const BRAND = brand();
 const FILE = BRAND.filePrefix;
@@ -200,7 +200,7 @@ panel.group('view').append(resetViewBtn);
 
 // Reset to defaults whenever a preset or import is applied (unless it sets
 // them): colouring, materials and textures, plus whatever the formula lists.
-const PRESET_RESET_BASE = /^(colorSource|foldColW|colorIters|gradRepeat|gradWrap|gradReverse|gradHue|gradSat|gradStops|mat\w+|crease\w+|tex\w+)$/;
+const PRESET_RESET_BASE = /^(colorSource|foldColW|colorIters|expSmoothScale|gradRepeat|gradWrap|gradReverse|gradHue|gradSat|gradStops|mat\w+|crease\w+|tex\w+)$/;
 const PRESET_RESET = Object.fromEntries(PARAMS
   .filter(p => PRESET_RESET_BASE.test(p.id) || (F.presetReset && F.presetReset.test(p.id)))
   .map(p => [p.id, p.def]));

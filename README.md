@@ -1,4 +1,4 @@
-# Organon v1.0.0
+# Organon v1.1.0
 
 **Organon** (ὄργανον, Greek for "instrument") is the shared engine behind Brad's 3D fractal explorers: [Kyma](https://github.com/snicker02/Kyma) (Amazing Surf) and [Eidos](https://github.com/snicker02/Eidos) (Kaleidoscopic IFS). It is a progressive WebGL1 raymarcher plus the app shell around it. It has no dependencies and no build step.
 
@@ -95,6 +95,7 @@ The shader is assembled as follows: defines → render-mode uniforms → `glsl.u
 
 - Uniforms: everything in `sceneUniforms()` (`engine/renderer.js`), including `u_colorSource`, `u_foldColW` and `u_colorIters`.
 - Globals to write: `g_boxCol` / `g_sphCol` (fold counts for colour and the material "Fold Count" key) and `g_colOn`. Under `#ifdef HAS_MAT`, also the texture probe `g_texProbe`, `g_texDone`, `g_texZ` and `g_orbit` (see Kyma's or Eidos's `mapLocal` for the pattern).
+- **Exp smoothing colour (optional, 1.1.0).** Opt in with `defineParams({ scene: { expSmooth: true } })` and call `expSmoothStep(r2)` once per iteration in `mapLocal`, with `r2` the iteration's \|z\|² (Kali uses the value the sphere fold tests). Organon then appends **Exp smoothing** as the last Color Source (index `EXP_SMOOTH_SOURCE` in `engine/params.js`), shows Color Iterations and **Smoothing Colour ×** for it, and compiles the code in only while it is selected (`HAS_EXPSM`, spec key `|es`). It sums `exp(−1/|r²ₙ − r²ₙ₋₁|)` over the iterations where `g_colOn` is 1 and replaces the colour index with that sum, which gives soft continuous bands that follow how the surface curls (Kali's `KboxExpSmooth.frag` in Fragmentarium). When it isn't selected, `expSmoothStep()` is an empty function the compiler drops.
 - The distance estimate must be conservative. If it can overshoot, say so in the UI and lower Step Factor.
 
 ## Template
@@ -114,5 +115,6 @@ Each app also has its own suite (`tests/run.mjs`, and `tests/browser.mjs` with P
 Organon uses semantic versioning. A minor version adds to the contract and a major version changes it. `ENGINE_VERSION` is in `app.js`, and the app's version badge tooltip shows both.
 
 - **1.0.0** (Nov 2026): extracted from Kyma 2.21.0 and Eidos 1.3.0. Kyma and Eidos render pixel-identical images on it.
+- **1.1.0** (Nov 2026): optional **Exp smoothing** colour source (`scene.expSmooth`, `expSmoothStep()`). Apps that don't opt in render identically; their shaders gain only two unused globals and an empty function.
 
 Created with help from Claude AI.

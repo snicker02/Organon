@@ -28,5 +28,5 @@ export const FORMULA_PARAMS = [
 defineParams({
   groups: GROUPS_LEFT,
   params: FORMULA_PARAMS,
-  scene: { override: { dist: { def: 7 }, rotX: { def: 0.6 }, rotY: { def: -0.35 } } },
+  scene: { expSmooth: true, override: { dist: { def: 7 }, rotX: { def: 0.6 }, rotY: { def: -0.35 } } },
 });
