@@ -139,6 +139,20 @@ const CORE_GLOBALS = `
 float g_boxCol;
 float g_sphCol;
 float g_colOn;  // 1 while the current iteration counts toward the colour
+// Exponential smoothing colour (Kali, KboxExpSmooth): the formula calls
+// expSmoothStep(|z|²) once per iteration; map() turns the sum into the colour
+// index when 'Exp smoothing' is the colour source (HAS_EXPSM).
+float g_esSum;
+float g_esPrev;
+#ifdef HAS_EXPSM
+uniform float u_expSmoothScale;
+void expSmoothStep(float r2) {
+  g_esSum += g_colOn * exp(-1.0 / max(abs(r2 - g_esPrev), 1e-6));
+  g_esPrev = r2;
+}
+#else
+void expSmoothStep(float r2) {}
+#endif
 // Texture "fractalize" probe (Mandelbulber calcModeCubeOrbitTrap): when set,
 // mapLocal records the first orbit point, from u_texFracStart on, that lies in
 // a cube of half-size u_texFracCube around the start point.
@@ -221,13 +235,26 @@ float map(vec3 p, out float trap) {
     q = q * c + cross(ax, q) * sn + ax * dot(ax, q) * (1.0 - c);
   }
   if (u_repVar.y > 0.0) sc = 1.0 + (h.y * 2.0 - 1.0) * u_repVar.y;
+#ifdef HAS_EXPSM
+  g_esSum = 0.0; g_esPrev = 0.0;
+#endif
   float d = mapLocal(u_objInv * (q / sc - u_objPos) / u_objScale, trap) * u_objScale * sc;
+#ifdef HAS_EXPSM
+  trap = g_esSum * u_expSmoothScale * 2.5; // ×2.5 cancels the shader's trap·0.4
+#endif
   trap += h.z * u_repVar.z;
   return min(d, bound + u_repPad);
 }
 #else
 float map(vec3 p, out float trap) {
+#ifdef HAS_EXPSM
+  g_esSum = 0.0; g_esPrev = 0.0;
+  float d = mapLocal(u_objInv * (p - u_objPos) / u_objScale, trap) * u_objScale;
+  trap = g_esSum * u_expSmoothScale * 2.5; // ×2.5 cancels the shader's trap·0.4
+  return d;
+#else
   return mapLocal(u_objInv * (p - u_objPos) / u_objScale, trap) * u_objScale;
+#endif
 }
 #endif
 
@@ -1245,7 +1272,7 @@ void main() {
 `;
 
 // Specialised fragment shader.
-// spec: { f: <formula spec>, mode, mat, xl, rep, dz }   (renderer.js specOf)
+// spec: { f: <formula spec>, mode, mat, xl, rep, dz, es }   (renderer.js specOf)
 // opts: { texLod }  (plus mode / mat / xl / rep / dz, which override spec's)
 // Note: '#ifdef' must be at column 0-ish; GLSL ES allows leading whitespace before '#'.
 export function fractalFrag(spec = {}, opts = {}) {
@@ -1258,7 +1285,8 @@ export function fractalFrag(spec = {}, opts = {}) {
     + (o.mat ? '#define HAS_MAT\n' : '')
     + (o.xl ? '#define HAS_XLIGHTS\n' : '')
     + (o.rep ? '#define HAS_REP\n' : '')
-    + (o.dz ? '#define DEEP_ZOOM\n' : '');
+    + (o.dz ? '#define DEEP_ZOOM\n' : '')
+    + (o.es ? '#define HAS_EXPSM\n' : '');
   return head + PRELUDE + '// ── formula ──\n' + F.glsl.uniforms + '\n' + COMMON + CORE_GLOBALS + F.glsl.source(f) + TAIL;
 }
 

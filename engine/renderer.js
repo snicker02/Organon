@@ -14,6 +14,7 @@
 
 import { VERT, DISPLAY_FRAG, fractalFrag } from './glsl.js';
 import { F } from './formula.js';
+import { EXP_SMOOTH_SOURCE } from './params.js';
 import { compileProgram, finishProgram, setUniforms, detectAccumFormat, createTarget, deleteTarget } from './gl.js';
 import { cameraBasis, lightWorldPos, extraLightPos } from './camera.js';
 import { gradientSpec, gradientKey, gradientScale, buildGradientLUT, LUT_SIZE } from './gradients.js';
@@ -139,6 +140,9 @@ export function sceneUniforms(v, scaleOverride) {
     // Repetition / arrays (HAS_REP) and Deep Zoom (DEEP_ZOOM) are compiled in only when on.
     __rep: (v.repMode | 0) > 0,
     __dz: !!v.deepZoom,
+    // Exp-smoothing colour (HAS_EXPSM) is compiled in only while it is the colour source.
+    __es: EXP_SMOOTH_SOURCE >= 0 && (v.colorSource | 0) === EXP_SMOOTH_SOURCE,
+    u_expSmoothScale: v.expSmoothScale ?? 0.4,
     u_repMode: v.repMode | 0,
     u_repCount: [v.repCountX ?? 2, v.repCountY ?? 0, v.repCountZ ?? 2].map(n => Math.max(0, Math.round(n))),
     u_repSpace: [v.repSpaceX ?? 5, v.repSpaceY ?? 5, v.repSpaceZ ?? 5],
@@ -181,12 +185,12 @@ export function sceneUniforms(v, scaleOverride) {
 export function specOf(scene, modeOverride) {
   return {
     f: F.spec(scene.__f ?? null),
-    mode: (modeOverride ?? scene.__mode) | 0, mat: !!scene.__mat, xl: !!scene.__xl, rep: !!scene.__rep, dz: !!scene.__dz,
+    mode: (modeOverride ?? scene.__mode) | 0, mat: !!scene.__mat, xl: !!scene.__xl, rep: !!scene.__rep, dz: !!scene.__dz, es: !!scene.__es,
   };
 }
 
 export function specKey(sp) {
-  return `${F.specKey(sp.f)}|m${sp.mode}${sp.mat ? '|mat' : ''}${sp.xl ? '|xl' : ''}${sp.rep ? '|rep' : ''}${sp.dz ? '|dz' : ''}`;
+  return `${F.specKey(sp.f)}|m${sp.mode}${sp.mat ? '|mat' : ''}${sp.xl ? '|xl' : ''}${sp.rep ? '|rep' : ''}${sp.dz ? '|dz' : ''}${sp.es ? '|es' : ''}`;
 }
 
 export class Renderer {

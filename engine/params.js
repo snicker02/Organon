@@ -290,13 +290,28 @@ export const SCENE_PARAMS = [
 //   scene    { override: { id: fields }, remove: [id], after: { id: [params] } }
 //            adjusts the right-dock params (e.g. a different default view, extra
 //            colour-source options, or an extra colour weight after foldColW).
+// Index of the 'Exp smoothing' colour source, or -1 when the formula hasn't
+// opted in (defineParams({ scene: { expSmooth: true } })). See README.
+export let EXP_SMOOTH_SOURCE = -1;
+
 export function defineParams({ groups, params, scene = {} }) {
   if (PARAMS.length) throw new Error('Organon: defineParams() called twice');
   const over = scene.override || {}, drop = new Set(scene.remove || []), after = scene.after || {};
   const sceneParams = [];
-  for (const p of SCENE_PARAMS) {
-    if (drop.has(p.id)) continue;
-    sceneParams.push(over[p.id] ? { ...p, ...over[p.id] } : p);
+  for (const p0 of SCENE_PARAMS) {
+    if (drop.has(p0.id)) continue;
+    let p = over[p0.id] ? { ...p0, ...over[p0.id] } : p0;
+    // Exponential smoothing (Kali's KboxExpSmooth) is appended as the last
+    // colour source, after the formula's own options, and reuses Color Iterations.
+    if (scene.expSmooth && p.id === 'colorSource') {
+      EXP_SMOOTH_SOURCE = p.options.length;
+      p = { ...p, options: [...p.options, 'Exp smoothing'] };
+    }
+    if (scene.expSmooth && p.id === 'colorIters') p = { ...p, gateEq: [...[].concat(p.gateEq ?? []), EXP_SMOOTH_SOURCE] };
+    sceneParams.push(p);
+    if (scene.expSmooth && p.id === 'colorSource') {
+      sceneParams.push({ id: 'expSmoothScale', label: 'Smoothing Colour ×', type: 'range', group: 'style', min: 0.02, max: 2, step: 0.01, def: 0.4, hardMin: 0, hardMax: 50, gate: 'colorSource', gateEq: EXP_SMOOTH_SOURCE, mutate: true });
+    }
     if (after[p.id]) sceneParams.push(...after[p.id]);
   }
   GROUPS.push(...groups, ...SCENE_GROUPS);

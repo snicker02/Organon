@@ -33,6 +33,7 @@ float mapLocal(vec3 p, out float trap) {
     z = clamp(z, -u_fold, u_fold) * 2.0 - z;
     // Sphere fold: inside minR scale up linearly, between minR and fixedR invert.
     float r2 = dot(z, z);
+    expSmoothStep(r2); // 'Exp smoothing' colour source (no-op unless selected)
     if (r2 < minR2) { float k = u_fixedR2 / minR2; z *= k; dr *= k; g_sphCol += g_colOn; }
     else if (r2 < u_fixedR2) { float k = u_fixedR2 / r2; z *= k; dr *= k; g_sphCol += 0.5 * g_colOn; }
     z = u_scale * z + c;

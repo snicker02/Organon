@@ -76,19 +76,29 @@ const src = fractalFrag(sp);
 ok(src.includes('float mapLocal(vec3 p, out float trap)') && src.includes('// ── formula ──'), 'formula source spliced in');
 ok(src.indexOf('uniform float u_scale;') < src.indexOf('float mapLocal') && src.indexOf('float mapLocal') < src.indexOf('// Object transform'), 'layout: uniforms → mapLocal → shared tail');
 const decl = {};
-for (const m of fractalFrag(specOf(sceneUniforms({ ...D, matOn: true, light2On: true, repMode: 1, deepZoom: true }))).matchAll(/uniform\s+(\w+)\s+(\w+)\s*;/g)) decl[m[2]] = m[1];
-for (const k of Object.keys(sceneUniforms({ ...D, matOn: true, light2On: true, repMode: 1, deepZoom: true }))) if (!k.startsWith('__')) ok(k in decl, `uniform ${k} is declared in the shader`);
+const ALL = { ...D, matOn: true, light2On: true, repMode: 1, deepZoom: true, colorSource: P.EXP_SMOOTH_SOURCE };
+for (const m of fractalFrag(specOf(sceneUniforms(ALL))).matchAll(/uniform\s+(\w+)\s+(\w+)\s*;/g)) decl[m[2]] = m[1];
+for (const k of Object.keys(sceneUniforms(ALL))) if (!k.startsWith('__')) ok(k in decl, `uniform ${k} is declared in the shader`);
+// Exp-smoothing colour source (opt-in via scene.expSmooth).
+{
+  const cs = P.PARAM_BY_ID.get('colorSource'), es = P.EXP_SMOOTH_SOURCE;
+  ok(es === cs.options.length - 1 && cs.options[es] === 'Exp smoothing', `'Exp smoothing' is the last colour source (index ${es})`);
+  ok([].concat(P.PARAM_BY_ID.get('colorIters').gateEq).includes(es) && P.PARAM_BY_ID.get('expSmoothScale').gateEq === es, 'Color Iterations and Smoothing Colour × show for it');
+  ok(specKey(specOf(sceneUniforms({ ...D, colorSource: es }))) === 'mbox|m0|es' && specKey(specOf(sceneUniforms({ ...D, colorSource: 1 }))) === 'mbox|m0', 'compiled in only while selected (|es)');
+  const on = fractalFrag(specOf(sceneUniforms({ ...D, colorSource: es }))), off = fractalFrag(sp);
+  ok(on.includes('#define HAS_EXPSM') && !off.includes('#define HAS_EXPSM') && /expSmoothStep\(r2\)/.test(on), 'template formula calls expSmoothStep(); HAS_EXPSM only when selected');
+}
 const hasGlslang = spawnSync('glslangValidator', ['--version']).status === 0;
 let compiled = 0;
-for (const mode of [0, 1, 2]) for (const [mat, xl, rep, dz] of [[0, 0, 0, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [1, 1, 1, 1]]) {
+for (const mode of [0, 1, 2]) for (const [mat, xl, rep, dz, es] of [[0, 0, 0, 0, 0], [1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [0, 0, 1, 0, 1], [1, 1, 1, 1, 1]]) {
   for (const texLod of [false, true]) {
-    const s = fractalFrag({ ...sp, mode, mat: !!mat, xl: !!xl, rep: !!rep, dz: !!dz }, { texLod });
+    const s = fractalFrag({ ...sp, mode, mat: !!mat, xl: !!xl, rep: !!rep, dz: !!dz, es: !!es }, { texLod });
     ok(s.includes(`#define RENDER_MODE ${mode}`), `mode ${mode} defined`);
     if (!hasGlslang) continue;
     const f = join(APP, 'combo.frag');
     writeFileSync(f, '#version 100\n' + s);
     const r = spawnSync('glslangValidator', [f]);
-    ok(r.status === 0, `compiles: mode ${mode} mat ${mat} xl ${xl} rep ${rep} dz ${dz} lod ${texLod}\n${String(r.stdout).slice(0, 400)}`);
+    ok(r.status === 0, `compiles: mode ${mode} mat ${mat} xl ${xl} rep ${rep} dz ${dz} es ${es} lod ${texLod}\n${String(r.stdout).slice(0, 400)}`);
     compiled++;
   }
 }
