@@ -117,8 +117,8 @@ Organon uses semantic versioning. A minor version adds to the contract and a maj
 - **1.0.0** (Nov 2026): extracted from Kyma 2.21.0 and Eidos 1.3.0. Kyma and Eidos render pixel-identical images on it.
 - **1.1.0** (Nov 2026): optional **Exp smoothing** colour source (`scene.expSmooth`, `expSmoothStep()`). Apps that don't opt in render identically; their shaders gain only two unused globals and an empty function. Also fixes `fractalAnglesFor()` at gimbal lock (β = ±90°), which mis-converted some Mandelbulber rotations.
 
-Created with help from Claude AI.
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Created with help from Claude AI.
