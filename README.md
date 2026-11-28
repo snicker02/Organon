@@ -118,3 +118,7 @@ Organon uses semantic versioning. A minor version adds to the contract and a maj
 - **1.1.0** (Nov 2026): optional **Exp smoothing** colour source (`scene.expSmooth`, `expSmoothStep()`). Apps that don't opt in render identically; their shaders gain only two unused globals and an empty function. Also fixes `fractalAnglesFor()` at gimbal lock (β = ±90°), which mis-converted some Mandelbulber rotations.
 
 Created with help from Claude AI.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
